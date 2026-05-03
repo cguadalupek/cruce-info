@@ -75,6 +75,58 @@ def should_review_status(status_value: str) -> bool:
     }
 
 
+def deduplicate_processed_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    unique_rows: list[dict[str, str]] = []
+    seen_signatures: set[tuple[str, ...]] = set()
+
+    for row in rows:
+        signature = (
+            row["orden"],
+            row["texto_breve"],
+            row["descripcion_estado_orden"],
+            row["estado_orden"],
+            row["motivo"],
+            row["responsable"],
+            row["fecha"],
+            row["resultado_cruce"],
+        )
+        if signature in seen_signatures:
+            continue
+        seen_signatures.add(signature)
+        unique_rows.append(row)
+
+    return unique_rows
+
+
+def build_summary(rows: list[dict[str, str]]) -> dict[str, int]:
+    summary = {
+        "total_registros": 0,
+        "ordenes_encontradas": 0,
+        "ordenes_no_encontradas": 0,
+        "ordenes_pendientes_crear": 0,
+        "ordenes_duplicadas": 0,
+        "ordenes_revisar_estado": 0,
+    }
+
+    for row in rows:
+        result = row["resultado_cruce"]
+        if result == RESULT_PENDIENTE_CREAR:
+            summary["ordenes_pendientes_crear"] += 1
+            continue
+
+        summary["total_registros"] += 1
+        if result == RESULT_ENCONTRADO:
+            summary["ordenes_encontradas"] += 1
+        elif result == RESULT_NO_ENCONTRADO:
+            summary["ordenes_no_encontradas"] += 1
+        elif result == RESULT_DUPLICADO:
+            summary["ordenes_duplicadas"] += 1
+        elif result == RESULT_REVISAR_ESTADO:
+            summary["ordenes_revisar_estado"] += 1
+
+    return summary
+
+
 def build_processed_data(
     sap_dataframe: pd.DataFrame,
     programa_dataframe: pd.DataFrame,
@@ -104,18 +156,10 @@ def build_processed_data(
     order_counts = Counter()
     for row in program_records:
         normalized_order = normalize_order(row.get(program_columns["orden"]))
-        if normalized_order:
+        if normalized_order and not is_pending_create(normalized_order):
             order_counts[normalized_order] += 1
 
     processed_rows: list[dict[str, str]] = []
-    summary = {
-        "total_registros": 0,
-        "ordenes_encontradas": 0,
-        "ordenes_no_encontradas": 0,
-        "ordenes_pendientes_crear": 0,
-        "ordenes_duplicadas": 0,
-        "ordenes_revisar_estado": 0,
-    }
 
     for row in program_records:
         normalized_order = normalize_order(row.get(program_columns["orden"]))
@@ -155,7 +199,7 @@ def build_processed_data(
             fecha = format_date(sap_match.get(sap_fecha_column, "")) if sap_fecha_column else ""
 
         processed_row = {
-            "orden": normalized_order,
+            "orden": "" if result == RESULT_PENDIENTE_CREAR else normalized_order,
             "texto_breve": format_text(
                 sap_match.get(sap_columns.get("texto_breve", ""), "") if sap_match else ""
             ),
@@ -172,17 +216,8 @@ def build_processed_data(
         }
         processed_rows.append(processed_row)
 
-        summary["total_registros"] += 1
-        if result == RESULT_ENCONTRADO:
-            summary["ordenes_encontradas"] += 1
-        elif result == RESULT_NO_ENCONTRADO:
-            summary["ordenes_no_encontradas"] += 1
-        elif result == RESULT_PENDIENTE_CREAR:
-            summary["ordenes_pendientes_crear"] += 1
-        elif result == RESULT_DUPLICADO:
-            summary["ordenes_duplicadas"] += 1
-        elif result == RESULT_REVISAR_ESTADO:
-            summary["ordenes_revisar_estado"] += 1
+    processed_rows = deduplicate_processed_rows(processed_rows)
+    summary = build_summary(processed_rows)
 
     return {
         "columnas": OUTPUT_COLUMNS,

@@ -70,27 +70,31 @@ function ResultsGrid({ rows, search, deferredSearch, onSearchChange }) {
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th key={header.id}>
-                    <button
-                      className="sort-button"
-                      type="button"
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      <span className="sort-indicator">
-                        {header.column.getIsSorted() === "asc"
-                          ? " ↑"
-                          : header.column.getIsSorted() === "desc"
-                            ? " ↓"
-                            : ""}
-                      </span>
-                    </button>
-                    <input
-                      className="column-filter"
-                      type="text"
-                      placeholder="Filtrar"
-                      value={header.column.getFilterValue() ?? ""}
-                      onChange={(event) => header.column.setFilterValue(event.target.value)}
-                    />
+                    <div className="header-cell">
+                      <button
+                        className="sort-button"
+                        type="button"
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <span className="header-label">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          <span className="sort-indicator">
+                            {header.column.getIsSorted() === "asc"
+                              ? " ↑"
+                              : header.column.getIsSorted() === "desc"
+                                ? " ↓"
+                                : ""}
+                          </span>
+                        </span>
+                      </button>
+                      <input
+                        className="column-filter"
+                        type="text"
+                        placeholder="Filtrar"
+                        value={header.column.getFilterValue() ?? ""}
+                        onChange={(event) => header.column.setFilterValue(event.target.value)}
+                      />
+                    </div>
                   </th>
                 ))}
               </tr>
