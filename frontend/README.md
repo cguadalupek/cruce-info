@@ -17,5 +17,5 @@ Por defecto la app consume la API en `http://127.0.0.1:8000`.
 Puedes cambiarlo creando un archivo `.env` con:
 
 ```bash
-VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_API_URL=http://127.0.0.1:8000
 ```
