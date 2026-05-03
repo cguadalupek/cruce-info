@@ -61,13 +61,19 @@ SAP_COLUMN_ALIASES = {
         "estado de orden",
         "estado orden",
         "estado de ord.",
+        "estado de orden sap",
+        "estado del sistema",
     ],
     "responsable": [
         "responsable",
+        "informacion de contacto autor",
+        "información de contacto autor",
+        "autor",
     ],
     "fecha_inicio_extrema": [
         "fecha de inicio extrema",
         "fecha inicio extrema",
+        "fecha de inicio extrema america lima",
     ],
 }
 
@@ -75,16 +81,18 @@ PROGRAM_COLUMN_ALIASES = {
     "orden": [
         "n°ot",
         "nºot",
-        "noot",
         "n ot",
         "ot",
         "nro ot",
         "numero ot",
         "n° ot",
         "nº ot",
+        "no ot",
     ],
     "responsable": [
         "responsable",
+        "responsable ejecucion",
+        "responsable ejecución",
     ],
     "fecha": [
         "fecha",

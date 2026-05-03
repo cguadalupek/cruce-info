@@ -120,8 +120,11 @@ def build_processed_data(
     for row in program_records:
         normalized_order = normalize_order(row.get(program_columns["orden"]))
         sap_match = sap_index.get(normalized_order)
-        sap_estado = format_text(
-            sap_match.get(sap_columns["estado_orden"], "") if sap_match else ""
+        sap_estado_column = sap_columns.get("estado_orden")
+        sap_estado = (
+            format_text(sap_match.get(sap_estado_column, ""))
+            if sap_match and sap_estado_column
+            else ""
         )
 
         if is_pending_create(normalized_order):

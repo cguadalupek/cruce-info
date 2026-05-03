@@ -11,9 +11,10 @@ from services import (
     ExcelProcessingError,
     build_export_file,
     build_processed_data,
+    detect_excel_source,
     ensure_xlsx_file,
-    read_excel,
 )
+from services.constants import PROGRAM_COLUMN_ALIASES, SAP_COLUMN_ALIASES
 
 app = FastAPI(title="Cruce Excel Mantenimiento API")
 
@@ -71,8 +72,32 @@ async def procesar_archivos(
         ensure_xlsx_file(sap_file, "Debe cargar el archivo SAP.")
         ensure_xlsx_file(programa_file, "Debe cargar el archivo Programa de Mantenimiento.")
 
-        sap_dataframe = await read_excel(sap_file)
-        programa_dataframe = await read_excel(programa_file)
+        source_definitions = {
+            "SAP": (SAP_COLUMN_ALIASES, {"orden"}),
+            "Programa": (PROGRAM_COLUMN_ALIASES, {"orden"}),
+        }
+
+        first_source_name, first_dataframe = await detect_excel_source(
+            sap_file,
+            source_definitions,
+        )
+        second_source_name, second_dataframe = await detect_excel_source(
+            programa_file,
+            source_definitions,
+        )
+
+        if first_source_name == second_source_name:
+            raise ExcelProcessingError(
+                "Los dos archivos parecen ser del mismo tipo. Carga un archivo SAP y un archivo Programa."
+            )
+
+        detected_dataframes = {
+            first_source_name: first_dataframe,
+            second_source_name: second_dataframe,
+        }
+
+        sap_dataframe = detected_dataframes["SAP"]
+        programa_dataframe = detected_dataframes["Programa"]
         result = build_processed_data(sap_dataframe, programa_dataframe)
 
         return {
