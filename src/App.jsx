@@ -1,9 +1,11 @@
 import { startTransition, useDeferredValue, useState } from "react";
-import ExportButton from "./components/ExportButton";
-import FileUploadBox from "./components/FileUploadBox";
-import ResultsGrid from "./components/ResultsGrid";
-import SummaryCards from "./components/SummaryCards";
-import { exportResults, processFiles } from "./services/api";
+import ExportButton from "./components/ExportButton.jsx";
+import FileUploadBox from "./components/FileUploadBox.jsx";
+import ResultsGrid from "./components/ResultsGrid.jsx";
+import SummaryCards from "./components/SummaryCards.jsx";
+import { exportResults } from "./services/excelExporter.js";
+import { detectExcelSource, ExcelProcessingError } from "./services/excelReader.js";
+import { buildProcessedData } from "./services/matcher.js";
 
 function App() {
   const [semana, setSemana] = useState("");
@@ -15,6 +17,17 @@ function App() {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [result, setResult] = useState(null);
+  const [inputResetKey, setInputResetKey] = useState(0);
+
+  function handleSapFileChange(file) {
+    setSapFile(file);
+    setError("");
+  }
+
+  function handleProgramaFileChange(file) {
+    setProgramaFile(file);
+    setError("");
+  }
 
   async function handleProcess(event) {
     event.preventDefault();
@@ -36,13 +49,32 @@ function App() {
     setIsProcessing(true);
 
     try {
-      const response = await processFiles({ semana, sapFile, programaFile });
+      const firstSource = await detectExcelSource(sapFile);
+      const secondSource = await detectExcelSource(programaFile);
+
+      if (firstSource.sourceName === secondSource.sourceName) {
+        throw new ExcelProcessingError(
+          "Los dos archivos parecen ser del mismo tipo. Carga un archivo SAP y un archivo Programa.",
+        );
+      }
+
+      const response = buildProcessedData({
+        semana,
+        sapSource: firstSource.sourceName === "SAP" ? firstSource : secondSource,
+        programaSource: firstSource.sourceName === "Programa" ? firstSource : secondSource,
+      });
+
       startTransition(() => {
         setResult(response);
+        setSearch("");
       });
     } catch (requestError) {
       setResult(null);
-      setError(requestError.message);
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Ocurrio un error inesperado al procesar los archivos.",
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -62,10 +94,28 @@ function App() {
         data: result.data,
       });
     } catch (requestError) {
-      setError(requestError.message);
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Ocurrio un error inesperado al exportar.",
+      );
     } finally {
       setIsExporting(false);
     }
+  }
+
+  function handleClear() {
+    setSemana("");
+    setSapFile(null);
+    setProgramaFile(null);
+    setError("");
+    setSearch("");
+    setResult(null);
+    setInputResetKey((currentValue) => currentValue + 1);
+  }
+
+  function handleFileError(message) {
+    setError(message);
   }
 
   return (
@@ -75,8 +125,8 @@ function App() {
           <p className="eyebrow">Cruce SAP vs Programa</p>
           <h1>Cruce de Ordenes de Mantenimiento</h1>
           <p className="hero-copy">
-            Carga los archivos SAP y Programa de Mantenimiento para generar el
-            reporte final automaticamente.
+            Carga ambos Excel, procesa el cruce directamente en tu navegador y
+            exporta el resultado final sin enviar archivos a ningun servidor.
           </p>
         </section>
 
@@ -99,19 +149,28 @@ function App() {
               label="Subir Excel SAP"
               helperText="Archivo .xlsx exportado de SAP."
               file={sapFile}
-              onFileChange={setSapFile}
+              onFileChange={handleSapFileChange}
+              onValidationError={handleFileError}
               inputId="sap-file"
+              resetKey={inputResetKey}
             />
             <FileUploadBox
               label="Subir Excel Programa de Mantenimiento"
               helperText="Archivo .xlsx del programa semanal."
               file={programaFile}
-              onFileChange={setProgramaFile}
+              onFileChange={handleProgramaFileChange}
+              onValidationError={handleFileError}
               inputId="programa-file"
+              resetKey={inputResetKey}
             />
           </div>
 
           {error ? <div className="alert-error">{error}</div> : null}
+
+          <p className="inline-note">
+            Los archivos se leen y procesan localmente. Solo se admiten
+            archivos <strong>.xlsx</strong>.
+          </p>
 
           <div className="actions-row">
             <button className="primary-button" type="submit" disabled={isProcessing}>
@@ -122,6 +181,9 @@ function App() {
               isLoading={isExporting}
               onClick={handleExport}
             />
+            <button className="ghost-button" type="button" onClick={handleClear}>
+              Limpiar archivos
+            </button>
           </div>
         </form>
 

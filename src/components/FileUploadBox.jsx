@@ -1,8 +1,17 @@
-function FileUploadBox({ label, helperText, file, onFileChange, inputId }) {
+function FileUploadBox({
+  label,
+  helperText,
+  file,
+  onFileChange,
+  onValidationError,
+  inputId,
+  resetKey,
+}) {
   function handleChange(event) {
     const selectedFile = event.target.files?.[0] ?? null;
     if (selectedFile && !selectedFile.name.toLowerCase().endsWith(".xlsx")) {
       onFileChange(null);
+      onValidationError?.("Solo se permiten archivos .xlsx validos.");
       event.target.value = "";
       return;
     }
@@ -17,6 +26,7 @@ function FileUploadBox({ label, helperText, file, onFileChange, inputId }) {
         {file ? file.name : "Haz clic para seleccionar un archivo .xlsx"}
       </span>
       <input
+        key={`${inputId}-${resetKey}`}
         id={inputId}
         type="file"
         accept=".xlsx"

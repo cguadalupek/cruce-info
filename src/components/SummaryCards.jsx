@@ -4,6 +4,7 @@ const SUMMARY_ITEMS = [
   ["ordenes_no_encontradas", "No encontrados"],
   ["ordenes_pendientes_crear", "Pendientes de crear OT"],
   ["ordenes_duplicadas", "Duplicados"],
+  ["ordenes_sin_ot", "Sin numero de OT"],
   ["ordenes_revisar_estado", "Revisar estado"],
 ];
 
