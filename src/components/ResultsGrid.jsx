@@ -71,35 +71,15 @@ function buildChecklistOptions(rows, accessorKey) {
   }));
 }
 
-function getScrollParents(element) {
-  const parents = [];
-  let currentElement = element?.parentElement ?? null;
-
-  while (currentElement) {
-    const styles = window.getComputedStyle(currentElement);
-    const overflowValue = `${styles.overflow}${styles.overflowX}${styles.overflowY}`;
-
-    if (/(auto|scroll|overlay)/.test(overflowValue)) {
-      parents.push(currentElement);
-    }
-
-    currentElement = currentElement.parentElement;
-  }
-
-  return parents;
-}
-
 function ChecklistFilter({ column, options }) {
   const wrapperRef = useRef(null);
-  const triggerRef = useRef(null);
-  const scrollParentsRef = useRef([]);
+  const panelRef = useRef(null);
   const rawFilterValue = column.getFilterValue();
   const currentFilterValue = Array.isArray(rawFilterValue) ? rawFilterValue : [];
   const appliedFilterKey = JSON.stringify([...currentFilterValue].sort());
   const [isOpen, setIsOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [draftValues, setDraftValues] = useState(currentFilterValue);
-  const [panelStyle, setPanelStyle] = useState({});
 
   useEffect(() => {
     if (!isOpen) {
@@ -108,7 +88,7 @@ function ChecklistFilter({ column, options }) {
         return currentValuesKey === appliedFilterKey ? currentValues : currentFilterValue;
       });
     }
-  }, [appliedFilterKey, isOpen]);
+  }, [appliedFilterKey, currentFilterValue, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -116,7 +96,10 @@ function ChecklistFilter({ column, options }) {
     }
 
     function handlePointerDown(event) {
-      if (!wrapperRef.current?.contains(event.target)) {
+      const clickedInsideTrigger = wrapperRef.current?.contains(event.target);
+      const clickedInsidePanel = panelRef.current?.contains(event.target);
+
+      if (!clickedInsideTrigger && !clickedInsidePanel) {
         setIsOpen(false);
         setSearchValue("");
         setDraftValues(currentFilterValue);
@@ -125,48 +108,7 @@ function ChecklistFilter({ column, options }) {
 
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [appliedFilterKey, isOpen]);
-
-  useEffect(() => {
-    if (!isOpen || !triggerRef.current) {
-      return undefined;
-    }
-
-    function updatePanelPosition() {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const panelWidth = Math.min(360, window.innerWidth - 24);
-      const maxLeft = Math.max(12, window.innerWidth - panelWidth - 12);
-      const left = Math.min(Math.max(12, rect.left), maxLeft);
-      const panelHeight = 320;
-      const openUpwards = rect.bottom + panelHeight > window.innerHeight - 12;
-      const top = openUpwards
-        ? Math.max(12, rect.top - panelHeight - 6)
-        : rect.bottom + 6;
-
-      setPanelStyle({
-        top,
-        left,
-        width: panelWidth,
-      });
-    }
-
-    scrollParentsRef.current = getScrollParents(triggerRef.current);
-    updatePanelPosition();
-    window.addEventListener("resize", updatePanelPosition);
-    window.addEventListener("scroll", updatePanelPosition, { passive: true });
-    for (const parent of scrollParentsRef.current) {
-      parent.addEventListener("scroll", updatePanelPosition, { passive: true });
-    }
-
-    return () => {
-      window.removeEventListener("resize", updatePanelPosition);
-      window.removeEventListener("scroll", updatePanelPosition);
-      for (const parent of scrollParentsRef.current) {
-        parent.removeEventListener("scroll", updatePanelPosition);
-      }
-      scrollParentsRef.current = [];
-    };
-  }, [isOpen]);
+  }, [currentFilterValue, isOpen]);
 
   const filteredOptions = useMemo(() => {
     const normalizedSearch = searchValue.trim().toLowerCase();
@@ -231,7 +173,6 @@ function ChecklistFilter({ column, options }) {
       <button
         className={`excel-filter-trigger${isOpen ? " is-open" : ""}`}
         type="button"
-        ref={triggerRef}
         onClick={() => setIsOpen((currentValue) => !currentValue)}
       >
         <span className="excel-filter-trigger-label">{summaryLabel}</span>
@@ -240,8 +181,8 @@ function ChecklistFilter({ column, options }) {
 
       {isOpen ? (
         <div
+          ref={panelRef}
           className="excel-filter-panel"
-          style={panelStyle}
           onMouseDown={(event) => event.stopPropagation()}
         >
           <div className="excel-filter-search">

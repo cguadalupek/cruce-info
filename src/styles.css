@@ -238,7 +238,6 @@ input {
 }
 
 .table-wrapper {
-  overflow-x: auto;
   border-radius: 18px;
   border: 1px solid rgba(19, 33, 47, 0.08);
 }
@@ -349,10 +348,13 @@ input {
 }
 
 .excel-filter-panel {
-  position: fixed;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
   z-index: 1000;
   display: grid;
   gap: 10px;
+  width: min(360px, calc(100vw - 48px));
   padding: 10px;
   border: 1px solid #c7d7cf;
   border-radius: 12px;
