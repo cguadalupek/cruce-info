@@ -1,3 +1,4 @@
+import * as XLSX from "xlsx";
 import { isBlankValue, normalizeHeader } from "../utils/normalize.js";
 
 export class ExcelProcessingError extends Error {
@@ -109,7 +110,7 @@ function buildCandidate(rows, headerRowIndex, sheetName) {
   };
 }
 
-function getWorkbookCandidates(workbook, XLSX) {
+function getWorkbookCandidates(workbook) {
   const candidates = [];
 
   for (const sheetName of workbook.SheetNames) {
@@ -174,15 +175,13 @@ export async function detectExcelSource(file) {
   ensureXlsxFile(file, "Debe cargar un archivo Excel.");
 
   try {
-    const xlsxModule = await import("xlsx");
-    const XLSX = xlsxModule;
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, {
       type: "array",
       cellDates: true,
     });
 
-    const candidates = getWorkbookCandidates(workbook, XLSX);
+    const candidates = getWorkbookCandidates(workbook);
     if (candidates.length === 0) {
       throw new ExcelProcessingError(
         `No se pudo identificar la estructura del archivo ${file.name}.`,

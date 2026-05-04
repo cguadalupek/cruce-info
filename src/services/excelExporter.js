@@ -1,3 +1,4 @@
+import XLSX from "xlsx-js-style";
 import { RESULT_COLORS, VISIBLE_EXPORT_COLUMNS } from "./matcher.js";
 
 function createCellStyle({ fillColor = "FFFFFF", bold = false, center = false } = {}) {
@@ -26,8 +27,6 @@ export async function exportResults({ semana, data }) {
     throw new Error("No hay resultados para exportar.");
   }
 
-  const xlsxModule = await import("xlsx-js-style");
-  const XLSX = xlsxModule.default ?? xlsxModule;
   const cleanWeek = semana.trim();
   const title = `SEMANA ${cleanWeek}`;
   const headers = VISIBLE_EXPORT_COLUMNS.map(([, label]) => label);
