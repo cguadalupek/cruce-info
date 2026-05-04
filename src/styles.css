@@ -28,7 +28,7 @@ input {
 }
 
 .app-card {
-  width: min(1200px, 100%);
+  width: min(1440px, 100%);
   margin: 0 auto;
   display: grid;
   gap: 24px;
@@ -261,10 +261,18 @@ input {
   background: #eff7f1;
 }
 
+.results-table-filter-row th {
+  border-top: 1px solid rgba(19, 33, 47, 0.06);
+  padding-top: 10px;
+  vertical-align: bottom;
+}
+
+.results-table-filter-cell {
+  min-width: 7rem;
+}
+
 .header-cell {
-  display: grid;
-  gap: 10px;
-  align-content: start;
+  display: block;
 }
 
 .sort-button {
@@ -284,7 +292,6 @@ input {
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  min-height: 48px;
 }
 
 .sort-indicator {
@@ -292,12 +299,15 @@ input {
 }
 
 .column-filter {
+  box-sizing: border-box;
   width: 100%;
   min-height: 36px;
   border: 1px solid #c7d7cf;
   border-radius: 10px;
   padding: 8px 10px;
   background: #ffffff;
+  font: inherit;
+  line-height: 1.25;
 }
 
 .excel-filter {
@@ -305,6 +315,7 @@ input {
 }
 
 .excel-filter-trigger {
+  box-sizing: border-box;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -316,6 +327,8 @@ input {
   background: #ffffff;
   cursor: pointer;
   color: #50645d;
+  font: inherit;
+  line-height: 1.25;
 }
 
 .excel-filter-trigger.is-open {

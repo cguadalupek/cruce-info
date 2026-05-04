@@ -1,4 +1,4 @@
-import XLSX from "xlsx-js-style";
+import XLSX from "xlsx-js-style/dist/xlsx.bundle.js";
 import { RESULT_COLORS, VISIBLE_EXPORT_COLUMNS } from "./matcher.js";
 
 function createCellStyle({ fillColor = "FFFFFF", bold = false, center = false } = {}) {

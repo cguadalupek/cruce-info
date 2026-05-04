@@ -5,12 +5,14 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
 const columns = [
   {
     accessorKey: "orden",
     header: "Orden",
+    filterFn: "checklist",
+    meta: { filterType: "checklist" },
   },
   {
     accessorKey: "texto_breve",
@@ -69,9 +71,28 @@ function buildChecklistOptions(rows, accessorKey) {
   }));
 }
 
+function getScrollParents(element) {
+  const parents = [];
+  let currentElement = element?.parentElement ?? null;
+
+  while (currentElement) {
+    const styles = window.getComputedStyle(currentElement);
+    const overflowValue = `${styles.overflow}${styles.overflowX}${styles.overflowY}`;
+
+    if (/(auto|scroll|overlay)/.test(overflowValue)) {
+      parents.push(currentElement);
+    }
+
+    currentElement = currentElement.parentElement;
+  }
+
+  return parents;
+}
+
 function ChecklistFilter({ column, options }) {
   const wrapperRef = useRef(null);
   const triggerRef = useRef(null);
+  const scrollParentsRef = useRef([]);
   const rawFilterValue = column.getFilterValue();
   const currentFilterValue = Array.isArray(rawFilterValue) ? rawFilterValue : [];
   const appliedFilterKey = JSON.stringify([...currentFilterValue].sort());
@@ -82,9 +103,12 @@ function ChecklistFilter({ column, options }) {
 
   useEffect(() => {
     if (!isOpen) {
-      setDraftValues(currentFilterValue);
+      setDraftValues((currentValues) => {
+        const currentValuesKey = JSON.stringify([...currentValues].sort());
+        return currentValuesKey === appliedFilterKey ? currentValues : currentFilterValue;
+      });
     }
-  }, [appliedFilterKey, currentFilterValue, isOpen]);
+  }, [appliedFilterKey, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -101,7 +125,7 @@ function ChecklistFilter({ column, options }) {
 
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [currentFilterValue, isOpen]);
+  }, [appliedFilterKey, isOpen]);
 
   useEffect(() => {
     if (!isOpen || !triggerRef.current) {
@@ -111,25 +135,36 @@ function ChecklistFilter({ column, options }) {
     function updatePanelPosition() {
       const rect = triggerRef.current.getBoundingClientRect();
       const panelWidth = Math.min(360, window.innerWidth - 24);
-      const left = Math.min(
-        Math.max(12, rect.right - panelWidth),
-        Math.max(12, window.innerWidth - panelWidth - 12),
-      );
+      const maxLeft = Math.max(12, window.innerWidth - panelWidth - 12);
+      const left = Math.min(Math.max(12, rect.left), maxLeft);
+      const panelHeight = 320;
+      const openUpwards = rect.bottom + panelHeight > window.innerHeight - 12;
+      const top = openUpwards
+        ? Math.max(12, rect.top - panelHeight - 6)
+        : rect.bottom + 6;
 
       setPanelStyle({
-        top: rect.bottom + 6,
+        top,
         left,
         width: panelWidth,
       });
     }
 
+    scrollParentsRef.current = getScrollParents(triggerRef.current);
     updatePanelPosition();
     window.addEventListener("resize", updatePanelPosition);
-    window.addEventListener("scroll", updatePanelPosition, true);
+    window.addEventListener("scroll", updatePanelPosition, { passive: true });
+    for (const parent of scrollParentsRef.current) {
+      parent.addEventListener("scroll", updatePanelPosition, { passive: true });
+    }
 
     return () => {
       window.removeEventListener("resize", updatePanelPosition);
-      window.removeEventListener("scroll", updatePanelPosition, true);
+      window.removeEventListener("scroll", updatePanelPosition);
+      for (const parent of scrollParentsRef.current) {
+        parent.removeEventListener("scroll", updatePanelPosition);
+      }
+      scrollParentsRef.current = [];
     };
   }, [isOpen]);
 
@@ -337,33 +372,43 @@ function ResultsGrid({ rows, search, deferredSearch, onSearchChange }) {
         <table className="results-table">
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th key={header.id}>
-                    {header.isPlaceholder ? null : (
-                      <div className="header-cell">
-                        <button
-                          className="sort-button"
-                          type="button"
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          <span className="header-label">
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            <span className="sort-indicator">
-                              {header.column.getIsSorted() === "asc"
-                                ? "^"
-                                : header.column.getIsSorted() === "desc"
-                                  ? "v"
-                                  : ""}
+              <Fragment key={headerGroup.id}>
+                <tr className="results-table-header-row">
+                  {headerGroup.headers.map((header) => (
+                    <th key={header.id}>
+                      {header.isPlaceholder ? null : (
+                        <div className="header-cell">
+                          <button
+                            className="sort-button"
+                            type="button"
+                            onClick={header.column.getToggleSortingHandler()}
+                          >
+                            <span className="header-label">
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              <span className="sort-indicator">
+                                {header.column.getIsSorted() === "asc"
+                                  ? "^"
+                                  : header.column.getIsSorted() === "desc"
+                                    ? "v"
+                                    : ""}
+                              </span>
                             </span>
-                          </span>
-                        </button>
+                          </button>
+                        </div>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+                <tr className="results-table-filter-row">
+                  {headerGroup.headers.map((header) => (
+                    <th key={`${header.id}-filter`} className="results-table-filter-cell">
+                      {header.isPlaceholder ? null : (
                         <ColumnFilter column={header.column} rows={rows} />
-                      </div>
-                    )}
-                  </th>
-                ))}
-              </tr>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              </Fragment>
             ))}
           </thead>
           <tbody>
