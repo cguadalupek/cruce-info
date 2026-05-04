@@ -246,7 +246,7 @@ input {
 .results-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 960px;
+  min-width: 1080px;
 }
 
 .results-table th,
@@ -336,11 +336,8 @@ input {
 }
 
 .excel-filter-panel {
-  position: absolute;
-  z-index: 2;
-  top: calc(100% + 6px);
-  left: 0;
-  width: min(280px, 90vw);
+  position: fixed;
+  z-index: 1000;
   display: grid;
   gap: 10px;
   padding: 10px;
@@ -367,14 +364,40 @@ input {
   max-height: 220px;
   overflow-y: auto;
   padding-right: 4px;
+  min-width: 0;
 }
 
 .excel-filter-option {
   display: flex;
   gap: 8px;
   align-items: flex-start;
-  padding: 4px 0;
+  width: 100%;
+  padding: 6px 4px;
+  border-radius: 8px;
   color: #13212f;
+  cursor: pointer;
+}
+
+.excel-filter-option:hover {
+  background: #f3f8f5;
+}
+
+.excel-filter-checkbox {
+  margin-top: 2px;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.excel-filter-checkbox {
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
+.excel-filter-option-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .excel-filter-option-all {
@@ -384,6 +407,8 @@ input {
 }
 
 .excel-filter-empty {
+  display: block;
+  padding: 8px 4px;
   color: #50645d;
 }
 
@@ -431,6 +456,16 @@ input {
 
 .result-revisar_estado {
   background: #fce5cd;
+}
+
+.fecha-cell {
+  display: inline-block;
+  min-width: 110px;
+  white-space: nowrap;
+}
+
+.fecha-column-cell {
+  min-width: 140px;
 }
 
 .empty-state {

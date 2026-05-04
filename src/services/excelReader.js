@@ -17,6 +17,13 @@ export class ExcelProcessingError extends Error {
 export const SAP_COLUMN_ALIASES = {
   orden: ["orden"],
   texto_breve: ["texto breve"],
+  motivo: [
+    "descripcion del plan de mantenimiento",
+    "descripción del plan de mantenimiento",
+    "descripcion de hoja de ruta",
+    "descripción de hoja de ruta",
+    "plan de mantenimiento preventivo",
+  ],
   descripcion_estado_orden: [
     "descripcion de estado de orden",
     "descripcion estado orden",
@@ -51,6 +58,16 @@ export const PROGRAM_COLUMN_ALIASES = {
     "ot",
     "nro ot",
     "numero ot",
+  ],
+  motivo: [
+    "motivo",
+    "descripcion",
+    "descripción",
+    "detalle",
+    "actividad",
+    "trabajo",
+    "descripcion del trabajo",
+    "descripción del trabajo",
   ],
   responsable: [
     "responsable",

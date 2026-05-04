@@ -170,6 +170,16 @@ export function buildProcessedData({ semana, sapSource, programaSource }) {
       fecha = formatDate(sapMatch[sapSource.columns.fecha_inicio_extrema]);
     }
 
+    let motivo = programaSource.columns.motivo
+      ? formatText(row[programaSource.columns.motivo])
+      : "";
+    if (!motivo && sapMatch && sapSource.columns.motivo) {
+      motivo = formatText(sapMatch[sapSource.columns.motivo]);
+    }
+    if (!motivo) {
+      motivo = RESULT_LABELS[result];
+    }
+
     return {
       orden: normalizedOrder,
       texto_breve:
@@ -181,7 +191,7 @@ export function buildProcessedData({ semana, sapSource, programaSource }) {
           ? formatText(sapMatch[sapSource.columns.descripcion_estado_orden])
           : "",
       estado_orden: sapStatus,
-      motivo: RESULT_LABELS[result],
+      motivo,
       responsable,
       fecha,
       resultado_cruce: result,

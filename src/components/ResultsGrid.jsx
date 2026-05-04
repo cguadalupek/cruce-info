@@ -41,6 +41,7 @@ const columns = [
     header: "Fecha",
     filterFn: "checklist",
     meta: { filterType: "checklist" },
+    cell: ({ getValue }) => <span className="fecha-cell">{getValue()}</span>,
   },
 ];
 
@@ -52,24 +53,38 @@ function buildChecklistOptions(rows, accessorKey) {
     values.add(value);
   }
 
-  return [...values]
-    .sort((firstValue, secondValue) => firstValue.localeCompare(secondValue))
-    .map((value) => ({
-      value,
-      label: value || "(Vacio)",
-    }));
+  const sortedValues = [...values].sort((firstValue, secondValue) => {
+    if (!firstValue && secondValue) {
+      return -1;
+    }
+    if (firstValue && !secondValue) {
+      return 1;
+    }
+    return firstValue.localeCompare(secondValue);
+  });
+
+  return sortedValues.map((value) => ({
+    value,
+    label: value || "(Vacio)",
+  }));
 }
 
 function ChecklistFilter({ column, options }) {
   const wrapperRef = useRef(null);
-  const currentFilterValue = column.getFilterValue() ?? [];
+  const triggerRef = useRef(null);
+  const rawFilterValue = column.getFilterValue();
+  const currentFilterValue = Array.isArray(rawFilterValue) ? rawFilterValue : [];
+  const appliedFilterKey = JSON.stringify([...currentFilterValue].sort());
   const [isOpen, setIsOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [draftValues, setDraftValues] = useState(currentFilterValue);
+  const [panelStyle, setPanelStyle] = useState({});
 
   useEffect(() => {
-    setDraftValues(currentFilterValue);
-  }, [currentFilterValue]);
+    if (!isOpen) {
+      setDraftValues(currentFilterValue);
+    }
+  }, [appliedFilterKey, currentFilterValue, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -87,6 +102,36 @@ function ChecklistFilter({ column, options }) {
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [currentFilterValue, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !triggerRef.current) {
+      return undefined;
+    }
+
+    function updatePanelPosition() {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const panelWidth = Math.min(360, window.innerWidth - 24);
+      const left = Math.min(
+        Math.max(12, rect.right - panelWidth),
+        Math.max(12, window.innerWidth - panelWidth - 12),
+      );
+
+      setPanelStyle({
+        top: rect.bottom + 6,
+        left,
+        width: panelWidth,
+      });
+    }
+
+    updatePanelPosition();
+    window.addEventListener("resize", updatePanelPosition);
+    window.addEventListener("scroll", updatePanelPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updatePanelPosition);
+      window.removeEventListener("scroll", updatePanelPosition, true);
+    };
+  }, [isOpen]);
 
   const filteredOptions = useMemo(() => {
     const normalizedSearch = searchValue.trim().toLowerCase();
@@ -151,6 +196,7 @@ function ChecklistFilter({ column, options }) {
       <button
         className={`excel-filter-trigger${isOpen ? " is-open" : ""}`}
         type="button"
+        ref={triggerRef}
         onClick={() => setIsOpen((currentValue) => !currentValue)}
       >
         <span className="excel-filter-trigger-label">{summaryLabel}</span>
@@ -158,7 +204,11 @@ function ChecklistFilter({ column, options }) {
       </button>
 
       {isOpen ? (
-        <div className="excel-filter-panel">
+        <div
+          className="excel-filter-panel"
+          style={panelStyle}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
           <div className="excel-filter-search">
             <input
               className="excel-filter-search-input"
@@ -172,22 +222,26 @@ function ChecklistFilter({ column, options }) {
           <div className="excel-filter-options">
             <label className="excel-filter-option excel-filter-option-all">
               <input
+                className="excel-filter-checkbox"
                 type="checkbox"
                 checked={allVisibleSelected}
+                onMouseDown={(event) => event.stopPropagation()}
                 onChange={handleToggleAllVisible}
               />
-              <span>(Seleccionar todo)</span>
+              <span className="excel-filter-option-label">(Seleccionar todo)</span>
             </label>
 
             {filteredOptions.length ? (
               filteredOptions.map((option) => (
                 <label className="excel-filter-option" key={`${column.id}-${option.label}`}>
                   <input
+                    className="excel-filter-checkbox"
                     type="checkbox"
                     checked={draftValues.includes(option.value)}
+                    onMouseDown={(event) => event.stopPropagation()}
                     onChange={() => handleToggleValue(option.value)}
                   />
-                  <span>{option.label}</span>
+                  <span className="excel-filter-option-label">{option.label}</span>
                 </label>
               ))
             ) : (
@@ -320,7 +374,10 @@ function ResultsGrid({ rows, search, deferredSearch, onSearchChange }) {
                   className={`result-row result-${row.original.resultado_cruce.toLowerCase()}`}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id}>
+                    <td
+                      key={cell.id}
+                      className={cell.column.id === "fecha" ? "fecha-column-cell" : ""}
+                    >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
