@@ -1,4 +1,5 @@
 import { formatDate, formatText, normalizeOrder } from "../utils/normalize.js";
+import { debugGroup, debugInfo } from "../utils/debug.js";
 
 export const RESULT_ENCONTRADO = "ENCONTRADO";
 export const RESULT_NO_ENCONTRADO = "NO_ENCONTRADO";
@@ -110,6 +111,14 @@ function deduplicateProcessedRows(rows) {
 }
 
 export function buildProcessedData({ semana, sapSource, programaSource }) {
+  debugInfo("Construyendo cruce de datos.", {
+    semana,
+    sapRows: sapSource.rows.length,
+    programaRows: programaSource.rows.length,
+    sapSheet: sapSource.sheetName,
+    programaSheet: programaSource.sheetName,
+  });
+
   const sapIndex = new Map();
   for (const row of sapSource.rows) {
     const normalizedOrder = normalizeOrder(row[sapSource.columns.orden]);
@@ -180,10 +189,22 @@ export function buildProcessedData({ semana, sapSource, programaSource }) {
   });
 
   const deduplicatedData = deduplicateProcessedRows(data);
+  const summary = buildSummary(deduplicatedData);
+
+  debugGroup("Resumen de matcher", () => {
+    debugInfo("SAP index size.", sapIndex.size);
+    debugInfo(
+      "Ordenes repetidas detectadas.",
+      [...orderCounts.entries()].filter(([, count]) => count > 1),
+    );
+    debugInfo("Rows antes de deduplicar.", data.length);
+    debugInfo("Rows despues de deduplicar.", deduplicatedData.length);
+    debugInfo("Resumen final.", summary);
+  });
 
   return {
     semana: semana.trim(),
-    resumen: buildSummary(deduplicatedData),
+    resumen: summary,
     columnas: OUTPUT_COLUMNS,
     data: deduplicatedData,
   };

@@ -1,5 +1,11 @@
 import * as XLSX from "xlsx";
 import { isBlankValue, normalizeHeader } from "../utils/normalize.js";
+import {
+  debugError,
+  debugGroup,
+  debugInfo,
+  errorToDebugPayload,
+} from "../utils/debug.js";
 
 export class ExcelProcessingError extends Error {
   constructor(message) {
@@ -173,15 +179,44 @@ function resolveColumns(candidate, aliasMap, requiredFields, sourceName) {
 
 export async function detectExcelSource(file) {
   ensureXlsxFile(file, "Debe cargar un archivo Excel.");
+  debugInfo("Leyendo archivo Excel.", {
+    fileName: file.name,
+    size: file.size,
+    type: file.type,
+  });
 
   try {
     const buffer = await file.arrayBuffer();
+    debugInfo("ArrayBuffer leido.", {
+      fileName: file.name,
+      byteLength: buffer.byteLength,
+    });
+
     const workbook = XLSX.read(buffer, {
       type: "array",
       cellDates: true,
     });
+    debugInfo("Workbook cargado.", {
+      fileName: file.name,
+      sheetNames: workbook.SheetNames,
+    });
 
     const candidates = getWorkbookCandidates(workbook);
+    debugInfo("Candidatos detectados.", {
+      fileName: file.name,
+      count: candidates.length,
+    });
+
+    debugGroup(`Candidatos para ${file.name}`, () => {
+      candidates.forEach((candidate, index) => {
+        debugInfo(`Candidato ${index + 1}`, {
+          sheetName: candidate.sheetName,
+          headers: candidate.headers,
+          rowCount: candidate.rows.length,
+        });
+      });
+    });
+
     if (candidates.length === 0) {
       throw new ExcelProcessingError(
         `No se pudo identificar la estructura del archivo ${file.name}.`,
@@ -210,6 +245,13 @@ export async function detectExcelSource(file) {
 
       if (matches.length === 1) {
         const [match] = matches;
+        debugInfo("Tipo de archivo identificado.", {
+          fileName: file.name,
+          sourceName: match.sourceName,
+          sheetName: candidate.sheetName,
+          columns: match.columns,
+          rowCount: candidate.rows.length,
+        });
         return {
           fileName: file.name,
           sourceName: match.sourceName,
@@ -221,11 +263,16 @@ export async function detectExcelSource(file) {
     }
   } catch (error) {
     if (error instanceof ExcelProcessingError) {
+      debugError("Error controlado al leer Excel.", errorToDebugPayload(error));
       throw error;
     }
+    debugError("Error inesperado al leer Excel.", errorToDebugPayload(error));
     throw new ExcelProcessingError("No se pudo leer el archivo Excel.");
   }
 
+  debugInfo("No se pudo determinar el tipo del archivo.", {
+    fileName: file.name,
+  });
   throw new ExcelProcessingError(
     `No se pudo identificar el tipo del archivo ${file.name}. Revisa las hojas y columnas requeridas.`,
   );

@@ -6,6 +6,13 @@ import SummaryCards from "./components/SummaryCards.jsx";
 import { exportResults } from "./services/excelExporter.js";
 import { detectExcelSource, ExcelProcessingError } from "./services/excelReader.js";
 import { buildProcessedData } from "./services/matcher.js";
+import {
+  debugError,
+  debugGroup,
+  debugInfo,
+  debugWarn,
+  errorToDebugPayload,
+} from "./utils/debug.js";
 
 function App() {
   const [semana, setSemana] = useState("");
@@ -22,26 +29,44 @@ function App() {
   function handleSapFileChange(file) {
     setSapFile(file);
     setError("");
+    debugInfo("Archivo SAP seleccionado.", {
+      name: file?.name ?? null,
+      size: file?.size ?? null,
+      type: file?.type ?? null,
+    });
   }
 
   function handleProgramaFileChange(file) {
     setProgramaFile(file);
     setError("");
+    debugInfo("Archivo Programa seleccionado.", {
+      name: file?.name ?? null,
+      size: file?.size ?? null,
+      type: file?.type ?? null,
+    });
   }
 
   async function handleProcess(event) {
     event.preventDefault();
+    debugInfo("Click en Procesar archivos.", {
+      semana,
+      sapLoaded: Boolean(sapFile),
+      programaLoaded: Boolean(programaFile),
+    });
 
     if (!semana.trim()) {
       setError("Debe ingresar la semana.");
+      debugWarn("Procesamiento detenido: semana vacia.");
       return;
     }
     if (!sapFile) {
       setError("Debe cargar el archivo SAP.");
+      debugWarn("Procesamiento detenido: falta archivo SAP.");
       return;
     }
     if (!programaFile) {
       setError("Debe cargar el archivo Programa de Mantenimiento.");
+      debugWarn("Procesamiento detenido: falta archivo Programa.");
       return;
     }
 
@@ -49,8 +74,23 @@ function App() {
     setIsProcessing(true);
 
     try {
+      debugInfo("Iniciando deteccion de archivo SAP.");
       const firstSource = await detectExcelSource(sapFile);
+      debugInfo("Deteccion completada para primer archivo.", {
+        fileName: firstSource.fileName,
+        sourceName: firstSource.sourceName,
+        sheetName: firstSource.sheetName,
+        rowCount: firstSource.rows.length,
+      });
+
+      debugInfo("Iniciando deteccion de archivo Programa.");
       const secondSource = await detectExcelSource(programaFile);
+      debugInfo("Deteccion completada para segundo archivo.", {
+        fileName: secondSource.fileName,
+        sourceName: secondSource.sourceName,
+        sheetName: secondSource.sheetName,
+        rowCount: secondSource.rows.length,
+      });
 
       if (firstSource.sourceName === secondSource.sourceName) {
         throw new ExcelProcessingError(
@@ -64,12 +104,19 @@ function App() {
         programaSource: firstSource.sourceName === "Programa" ? firstSource : secondSource,
       });
 
+      debugGroup("Resultado de procesamiento", () => {
+        debugInfo("Resumen generado.", response.resumen);
+        debugInfo("Filas generadas.", response.data.length);
+        debugInfo("Primeras filas.", response.data.slice(0, 5));
+      });
+
       startTransition(() => {
         setResult(response);
         setSearch("");
       });
     } catch (requestError) {
       setResult(null);
+      debugError("Fallo al procesar archivos.", errorToDebugPayload(requestError));
       setError(
         requestError instanceof Error
           ? requestError.message
@@ -82,18 +129,25 @@ function App() {
 
   async function handleExport() {
     if (!result?.data?.length) {
+      debugWarn("Exportacion cancelada: no hay resultados.");
       return;
     }
 
     setIsExporting(true);
     setError("");
+    debugInfo("Iniciando exportacion.", {
+      semana: result.semana,
+      rows: result.data.length,
+    });
 
     try {
       await exportResults({
         semana: result.semana,
         data: result.data,
       });
+      debugInfo("Exportacion completada.");
     } catch (requestError) {
+      debugError("Fallo al exportar resultados.", errorToDebugPayload(requestError));
       setError(
         requestError instanceof Error
           ? requestError.message
@@ -105,6 +159,7 @@ function App() {
   }
 
   function handleClear() {
+    debugInfo("Limpiando estado de la aplicacion.");
     setSemana("");
     setSapFile(null);
     setProgramaFile(null);
@@ -115,6 +170,7 @@ function App() {
   }
 
   function handleFileError(message) {
+    debugWarn("Validacion de archivo.", { message });
     setError(message);
   }
 
@@ -123,7 +179,7 @@ function App() {
       <main className="app-card">
         <section className="hero">
           <p className="eyebrow">Cruce SAP vs Programa</p>
-          <h1>Cruce de Ordenes de Mantenimientoo..  </h1>
+          <h1>Cruce de Ordenes de Mantenimiento</h1>
           <p className="hero-copy">
             Carga ambos Excel, procesa el cruce directamente en tu navegador y
             exporta el resultado final sin enviar archivos a ningun servidor.
