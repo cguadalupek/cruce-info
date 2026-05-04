@@ -123,7 +123,7 @@ function App() {
       <main className="app-card">
         <section className="hero">
           <p className="eyebrow">Cruce SAP vs Programa</p>
-          <h1>Cruce de Ordenes de Mantenimiento</h1>
+          <h1>Cruce de Ordenes de Mantenimientoo..  </h1>
           <p className="hero-copy">
             Carga ambos Excel, procesa el cruce directamente en tu navegador y
             exporta el resultado final sin enviar archivos a ningun servidor.
