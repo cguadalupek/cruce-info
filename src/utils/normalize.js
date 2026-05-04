@@ -58,6 +58,19 @@ export function formatText(value) {
   return String(value).trim();
 }
 
+export function formatMultilineText(value) {
+  const text = formatText(value);
+  if (!text) {
+    return "";
+  }
+
+  return text
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .join("\n");
+}
+
 export function formatDate(value) {
   if (isNil(value)) {
     return "";

@@ -49,6 +49,7 @@ const columns = [
   {
     accessorKey: "motivo",
     header: "Motivo",
+    cell: ({ getValue }) => <span className="motivo-cell">{getValue()}</span>,
   },
   {
     accessorKey: "responsable",

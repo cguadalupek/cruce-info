@@ -515,6 +515,10 @@ input {
   white-space: nowrap;
 }
 
+.motivo-cell {
+  white-space: pre-line;
+}
+
 .fecha-column-cell {
   min-width: 140px;
 }

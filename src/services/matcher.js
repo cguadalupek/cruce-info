@@ -1,4 +1,4 @@
-import { formatDate, formatText, normalizeOrder } from "../utils/normalize.js";
+import { formatDate, formatMultilineText, formatText, normalizeOrder } from "../utils/normalize.js";
 import { debugGroup, debugInfo } from "../utils/debug.js";
 
 export const RESULT_ENCONTRADO = "ENCONTRADO";
@@ -171,10 +171,10 @@ export function buildProcessedData({ semana, sapSource, programaSource }) {
     }
 
     let motivo = programaSource.columns.motivo
-      ? formatText(row[programaSource.columns.motivo])
+      ? formatMultilineText(row[programaSource.columns.motivo])
       : "";
     if (!motivo && sapMatch && sapSource.columns.motivo) {
-      motivo = formatText(sapMatch[sapSource.columns.motivo]);
+      motivo = formatMultilineText(sapMatch[sapSource.columns.motivo]);
     }
     if (!motivo) {
       motivo = RESULT_LABELS[result];
