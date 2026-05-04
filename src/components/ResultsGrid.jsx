@@ -7,6 +7,24 @@ import {
 } from "@tanstack/react-table";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  RESULT_DUPLICADO,
+  RESULT_ENCONTRADO,
+  RESULT_NO_ENCONTRADO,
+  RESULT_PENDIENTE_CREAR,
+  RESULT_REVISAR_ESTADO,
+  RESULT_SIN_OT,
+} from "../services/matcher.js";
+
+const RESULT_FILTER_LABELS = {
+  [RESULT_ENCONTRADO]: "Encontrados en SAP",
+  [RESULT_NO_ENCONTRADO]: "No encontrados",
+  [RESULT_PENDIENTE_CREAR]: "Pendientes de crear OT",
+  [RESULT_DUPLICADO]: "Duplicados",
+  [RESULT_SIN_OT]: "Sin numero de OT",
+  [RESULT_REVISAR_ESTADO]: "Revisar estado",
+};
+
 const columns = [
   {
     accessorKey: "orden",
@@ -263,8 +281,28 @@ function ColumnFilter({ column, rows }) {
   );
 }
 
-function ResultsGrid({ rows, search, deferredSearch, onSearchChange }) {
+function ResultsGrid({
+  rows,
+  search,
+  deferredSearch,
+  onSearchChange,
+  activeResultFilter,
+  onClearResults,
+  resetFiltersKey,
+}) {
   const [columnFilters, setColumnFilters] = useState([]);
+
+  useEffect(() => {
+    setColumnFilters([]);
+  }, [resetFiltersKey]);
+
+  const visibleRows = useMemo(() => {
+    if (!activeResultFilter) {
+      return rows;
+    }
+
+    return rows.filter((row) => row.resultado_cruce === activeResultFilter);
+  }, [activeResultFilter, rows]);
 
   const filterFns = useMemo(
     () => ({
@@ -281,7 +319,7 @@ function ResultsGrid({ rows, search, deferredSearch, onSearchChange }) {
   );
 
   const table = useReactTable({
-    data: rows,
+    data: visibleRows,
     columns,
     filterFns,
     state: {
@@ -300,14 +338,29 @@ function ResultsGrid({ rows, search, deferredSearch, onSearchChange }) {
     <section className="panel stack-md">
       <div className="section-heading results-heading">
         <h2>Resultados</h2>
-        <input
-          className="text-input search-input"
-          type="search"
-          placeholder="Busqueda rapida"
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-        />
+        <button
+          className="ghost-button results-center-action"
+          type="button"
+          onClick={onClearResults}
+        >
+          Limpiar resultados
+        </button>
+        <div className="results-toolbar">
+          <input
+            className="text-input search-input"
+            type="search"
+            placeholder="Busqueda rapida"
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
+        </div>
       </div>
+
+      {activeResultFilter ? (
+        <p className="inline-note">
+          Filtro activo: <strong>{RESULT_FILTER_LABELS[activeResultFilter]}</strong>
+        </p>
+      ) : null}
 
       <div className="table-wrapper">
         <table className="results-table">
@@ -372,9 +425,11 @@ function ResultsGrid({ rows, search, deferredSearch, onSearchChange }) {
             ) : (
               <tr>
                 <td className="empty-state" colSpan={columns.length}>
-                  {rows.length
+                  {visibleRows.length
                     ? "No hay resultados para los filtros actuales."
-                    : "Aun no hay resultados procesados."}
+                    : rows.length
+                      ? "No hay registros para el resumen seleccionado."
+                      : "Aun no hay resultados procesados."}
                 </td>
               </tr>
             )}

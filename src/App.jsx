@@ -25,6 +25,9 @@ function App() {
   const deferredSearch = useDeferredValue(search);
   const [result, setResult] = useState(null);
   const [inputResetKey, setInputResetKey] = useState(0);
+  const [activeSummaryKey, setActiveSummaryKey] = useState(null);
+  const [activeSummaryResult, setActiveSummaryResult] = useState(null);
+  const [resultsResetKey, setResultsResetKey] = useState(0);
 
   useEffect(() => {
     debugInfo("Cambio de estado result.", {
@@ -120,6 +123,9 @@ function App() {
 
       setResult(response);
       setSearch("");
+      setActiveSummaryKey(null);
+      setActiveSummaryResult(null);
+      setResultsResetKey((currentValue) => currentValue + 1);
       debugInfo("setResult ejecutado.", {
         rowCount: response.data.length,
       });
@@ -175,12 +181,34 @@ function App() {
     setError("");
     setSearch("");
     setResult(null);
+    setActiveSummaryKey(null);
+    setActiveSummaryResult(null);
+    setResultsResetKey((currentValue) => currentValue + 1);
     setInputResetKey((currentValue) => currentValue + 1);
   }
 
   function handleFileError(message) {
     debugWarn("Validacion de archivo.", { message });
     setError(message);
+  }
+
+  function handleSelectSummary(summaryKey, resultValue) {
+    if (activeSummaryKey === summaryKey) {
+      setActiveSummaryKey(null);
+      setActiveSummaryResult(null);
+      return;
+    }
+
+    setActiveSummaryKey(summaryKey);
+    setActiveSummaryResult(resultValue);
+  }
+
+  function handleClearResults() {
+    setResult(null);
+    setSearch("");
+    setActiveSummaryKey(null);
+    setActiveSummaryResult(null);
+    setResultsResetKey((currentValue) => currentValue + 1);
   }
 
   return (
@@ -253,12 +281,19 @@ function App() {
         </form>
 
         <section className="stack-lg">
-          <SummaryCards summary={result?.resumen} />
+          <SummaryCards
+            summary={result?.resumen}
+            activeSummaryKey={activeSummaryKey}
+            onSelectSummary={handleSelectSummary}
+          />
           <ResultsGrid
             rows={result?.data ?? []}
             search={search}
             deferredSearch={deferredSearch}
             onSearchChange={setSearch}
+            activeResultFilter={activeSummaryResult}
+            onClearResults={handleClearResults}
+            resetFiltersKey={resultsResetKey}
           />
         </section>
       </main>
