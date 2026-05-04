@@ -5,7 +5,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const columns = [
   {
@@ -61,38 +61,158 @@ function buildChecklistOptions(rows, accessorKey) {
 }
 
 function ChecklistFilter({ column, options }) {
-  const selectedValues = column.getFilterValue() ?? [];
+  const wrapperRef = useRef(null);
+  const currentFilterValue = column.getFilterValue() ?? [];
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const [draftValues, setDraftValues] = useState(currentFilterValue);
 
-  function handleToggle(optionValue) {
-    const nextValues = selectedValues.includes(optionValue)
-      ? selectedValues.filter((value) => value !== optionValue)
-      : [...selectedValues, optionValue];
+  useEffect(() => {
+    setDraftValues(currentFilterValue);
+  }, [currentFilterValue]);
 
-    column.setFilterValue(nextValues.length ? nextValues : undefined);
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    function handlePointerDown(event) {
+      if (!wrapperRef.current?.contains(event.target)) {
+        setIsOpen(false);
+        setSearchValue("");
+        setDraftValues(currentFilterValue);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [currentFilterValue, isOpen]);
+
+  const filteredOptions = useMemo(() => {
+    const normalizedSearch = searchValue.trim().toLowerCase();
+    if (!normalizedSearch) {
+      return options;
+    }
+
+    return options.filter((option) => option.label.toLowerCase().includes(normalizedSearch));
+  }, [options, searchValue]);
+
+  const visibleOptionValues = filteredOptions.map((option) => option.value);
+  const allVisibleSelected =
+    visibleOptionValues.length > 0 &&
+    visibleOptionValues.every((value) => draftValues.includes(value));
+
+  function handleToggleValue(optionValue) {
+    setDraftValues((currentValues) =>
+      currentValues.includes(optionValue)
+        ? currentValues.filter((value) => value !== optionValue)
+        : [...currentValues, optionValue],
+    );
   }
 
+  function handleToggleAllVisible() {
+    if (allVisibleSelected) {
+      setDraftValues((currentValues) =>
+        currentValues.filter((value) => !visibleOptionValues.includes(value)),
+      );
+      return;
+    }
+
+    setDraftValues((currentValues) => {
+      const nextValues = new Set(currentValues);
+      for (const value of visibleOptionValues) {
+        nextValues.add(value);
+      }
+      return [...nextValues];
+    });
+  }
+
+  function handleApply() {
+    column.setFilterValue(draftValues.length ? draftValues : undefined);
+    setIsOpen(false);
+    setSearchValue("");
+  }
+
+  function handleCancel() {
+    setDraftValues(currentFilterValue);
+    setSearchValue("");
+    setIsOpen(false);
+  }
+
+  function handleClear() {
+    setDraftValues([]);
+  }
+
+  const summaryLabel =
+    currentFilterValue.length > 0 ? `${currentFilterValue.length} seleccionado(s)` : "Filtrar";
+
   return (
-    <details className="checklist-filter">
-      <summary className="checklist-summary">
-        {selectedValues.length ? `${selectedValues.length} seleccionado(s)` : "Filtrar"}
-      </summary>
-      <div className="checklist-panel">
-        {options.length ? (
-          options.map((option) => (
-            <label className="checklist-option" key={`${column.id}-${option.label}`}>
+    <div className="excel-filter" ref={wrapperRef}>
+      <button
+        className={`excel-filter-trigger${isOpen ? " is-open" : ""}`}
+        type="button"
+        onClick={() => setIsOpen((currentValue) => !currentValue)}
+      >
+        <span className="excel-filter-trigger-label">{summaryLabel}</span>
+        <span className="excel-filter-trigger-icon">▼</span>
+      </button>
+
+      {isOpen ? (
+        <div className="excel-filter-panel">
+          <div className="excel-filter-search">
+            <input
+              className="excel-filter-search-input"
+              type="search"
+              placeholder="Buscar"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+            />
+          </div>
+
+          <div className="excel-filter-options">
+            <label className="excel-filter-option excel-filter-option-all">
               <input
                 type="checkbox"
-                checked={selectedValues.includes(option.value)}
-                onChange={() => handleToggle(option.value)}
+                checked={allVisibleSelected}
+                onChange={handleToggleAllVisible}
               />
-              <span>{option.label}</span>
+              <span>(Seleccionar todo)</span>
             </label>
-          ))
-        ) : (
-          <span className="checklist-empty">Sin opciones</span>
-        )}
-      </div>
-    </details>
+
+            {filteredOptions.length ? (
+              filteredOptions.map((option) => (
+                <label className="excel-filter-option" key={`${column.id}-${option.label}`}>
+                  <input
+                    type="checkbox"
+                    checked={draftValues.includes(option.value)}
+                    onChange={() => handleToggleValue(option.value)}
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))
+            ) : (
+              <span className="excel-filter-empty">Sin coincidencias</span>
+            )}
+          </div>
+
+          <div className="excel-filter-actions">
+            <button className="excel-filter-action" type="button" onClick={handleClear}>
+              Limpiar
+            </button>
+            <button className="excel-filter-action" type="button" onClick={handleCancel}>
+              Cancelar
+            </button>
+            <button
+              className="excel-filter-action excel-filter-action-primary"
+              type="button"
+              onClick={handleApply}
+            >
+              Aceptar
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
