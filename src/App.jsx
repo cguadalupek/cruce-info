@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import ExportButton from "./components/ExportButton.jsx";
 import FileUploadBox from "./components/FileUploadBox.jsx";
 import ResultsGrid from "./components/ResultsGrid.jsx";
@@ -25,6 +25,14 @@ function App() {
   const deferredSearch = useDeferredValue(search);
   const [result, setResult] = useState(null);
   const [inputResetKey, setInputResetKey] = useState(0);
+
+  useEffect(() => {
+    debugInfo("Cambio de estado result.", {
+      hasResult: Boolean(result),
+      rowCount: result?.data?.length ?? 0,
+      summary: result?.resumen ?? null,
+    });
+  }, [result]);
 
   function handleSapFileChange(file) {
     setSapFile(file);
@@ -110,9 +118,10 @@ function App() {
         debugInfo("Primeras filas.", response.data.slice(0, 5));
       });
 
-      startTransition(() => {
-        setResult(response);
-        setSearch("");
+      setResult(response);
+      setSearch("");
+      debugInfo("setResult ejecutado.", {
+        rowCount: response.data.length,
       });
     } catch (requestError) {
       setResult(null);
